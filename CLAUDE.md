@@ -23,6 +23,8 @@ MLX-Swift port of SeedVR2 (one-step diffusion SR) for MLXEngine / ForgeUpscaler 
   `seedvr2-mlx/scripts/prepare_swift.py`.
 
 ## Status / next
-See `docs/PORT-PLAN.md`. Done: scaffold, Config, WeightLoader, RMSNorm. Next leaf: RoPE →
-SwiGLU → AdaModulation → Attention; then full Transformer stage-parity vs `t_out` (the
-make-or-break gate), then VAE, then pipeline, then ForgeUpscaler Export-tier conformer + int8.
+**Model COMPLETE + published** (`mlx-community/SeedVR2-3B-mlx{,-int8}`). Full inference path
+parity-verified vs mflux (DiT 2.1e-4, VAE 3.5e-3/7.2e-3, RNG/sched 0.0, int8 cosine 0.99997).
+Remaining is **Forge integration only** → **`docs/FORGE-HANDOFF.md`** (ExportTier conformer
+`SeedVR2_MLX` replacing the `OSEDiff_MLX` stub, host preprocess + LAB color-correct, VAE tiling,
+Swift HF auto-download). Port detail + parity table: `docs/PORT-PLAN.md`.
