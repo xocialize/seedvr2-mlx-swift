@@ -10,6 +10,8 @@ public struct SeedVR2Weights {
     public let transformer: [String: MLXArray]
     public let vae: [String: MLXArray]
     public let posEmb: MLXArray
+    /// (bits, groupSize) if the transformer weights are quantized; nil for fp16.
+    public let quantization: (bits: Int, groupSize: Int)?
 
     public init(directory url: URL) throws {
         let cfgData = try Data(contentsOf: url.appendingPathComponent("config.json"))
@@ -18,6 +20,13 @@ public struct SeedVR2Weights {
         if let variant = raw["variant"] as? String, variant.contains("7b") { cfg = .r7B }
         if let ov = raw["transformer_overrides"] as? [String: Int] { cfg.apply(overrides: ov) }
         self.config = cfg
+
+        if let q = raw["quantization"] as? [String: Any],
+           let bits = q["bits"] as? Int, let gs = q["group_size"] as? Int {
+            self.quantization = (bits, gs)
+        } else {
+            self.quantization = nil
+        }
 
         self.transformer = try MLX.loadArrays(url: url.appendingPathComponent("transformer.safetensors"))
         self.vae = try MLX.loadArrays(url: url.appendingPathComponent("vae.safetensors"))

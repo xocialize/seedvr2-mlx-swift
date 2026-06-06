@@ -18,6 +18,10 @@ public final class SeedVR2Upscaler {
         let w = try SeedVR2Weights(directory: dir)
         self.config = w.config
         self.transformer = SeedVR2Transformer(w.config)
+        if let q = w.quantization {
+            // Apply the same quantization the weights were saved with, then load.
+            SeedVR2Quant.quantizeTransformer(transformer, groupSize: q.groupSize, bits: q.bits)
+        }
         try transformer.update(parameters: ModuleParameters.unflattened(w.transformer), verify: .none)
         self.vae = SeedVR2VAE()
         try vae.update(parameters: ModuleParameters.unflattened(w.vae), verify: .none)
