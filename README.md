@@ -7,7 +7,8 @@ Python/mflux.
 
 - **Reference (oracle):** [`filipstrand/mflux`](https://github.com/filipstrand/mflux) `src/mflux/models/seedvr2/` (MLX-Python). This port is an MLX-Python → MLX-Swift translation — see `docs/PORT-PLAN.md`.
 - **Model/weights license:** Apache-2.0 (ByteDance Seed). Port code: MIT.
-- **Status:** 🚧 scaffold + Phase 1 complete. Config, WeightLoader, RMSNorm landed; package builds; tests pass. Module translation in progress per `docs/PORT-PLAN.md`.
+- **Weights:** [mlx-community/SeedVR2-3B-mlx](https://huggingface.co/mlx-community/SeedVR2-3B-mlx) (fp16) · [SeedVR2-3B-mlx-int8](https://huggingface.co/mlx-community/SeedVR2-3B-mlx-int8) (near-lossless, ~4 GB on-device) · [collection](https://huggingface.co/collections/mlx-community/seedvr2-mlx-swift-6a23c38505955a29500123b4).
+- **Status:** ✅ full inference path ported + parity-verified vs mflux (DiT `t_out` 2.1e-4, VAE 3.5e-3/7.2e-3, RNG/scheduler 0.0, int8 cosine 0.99997) and weights published. Remaining = host preprocess/color-correct + ForgeUpscaler integration (tiling, Export-tier conformer). See `docs/PORT-PLAN.md`.
 
 ## Build & test
 
