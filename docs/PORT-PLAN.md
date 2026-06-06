@@ -27,16 +27,19 @@ stage modules: vs goldens (`< 1e-2` fp16). Status: ✅ done · ⬜ todo.
 | time_embedding.py | TimeEmbedding.swift | sinusoid (computed, not param) → MLP → 15360 | ✅ |
 | patch_in.py | Patch.swift `PatchIn` | patch (1,2,2); 33·4=132→2560; round-trip verified | ✅ |
 | patch_out.py | Patch.swift `PatchOut` | unpatch → 16·4=64 channels | ✅ |
-| rope.py | RoPE.swift | **axial 3D freqs + mm-rope; `freqs` (21,) is a stored buffer**; complex | ⬜ |
-| window.py | Window.swift | **CRUX** — variable-size window partition (scale by √(45·80/hw)), forward/reverse index | ⬜ |
-| attention.py | Attention.swift | **CRUX** — windowed MM attn: per-window data-dependent `split`, text-repeat-per-window, per-window SDPA, coalesce | ⬜ |
-| transformer_block.py | TransformerBlock.swift | norm→ada(in)→attn→ada(out)→res, then mlp; uses computed rms_norm | ⬜ |
-| transformer.py | Transformer.swift | top: vid_in, txt_in, emb_in→reshape[B,dim,2,3], blocks, out ada (out_shift/scale + vid_out_norm), patch_out | ⬜ |
+| rope.py | RoPE.swift | axial 3D freqs + mm-rope; `freqs` (21,) stored buffer | ✅ (bit-exact in block0) |
+| window.py | Window.swift | variable-size partition; **unshifted done & bit-exact**; `shift=true` (odd blocks) ⬜ | 🟡 |
+| attention.py | Attention.swift | windowed MM attn (per-window split, text-repeat, SDPA, coalesce) — **non-shared bit-exact**; shared variant ⬜ | 🟡 |
+| transformer_block.py | TransformerBlock.swift | norm→ada(in)→attn→ada(out)→res, then mlp — **non-shared/non-last bit-exact** | 🟡 |
+| transformer.py | Transformer.swift | top assembly: vid_in, txt_in, emb_in→[B,dim,2,3], blocks, out ada, patch_out | ⬜ |
 
-**The crux is `window.py` + `attention.py`** — not the assembly. Window attention uses
-data-dependent `mx.split`/per-window Python loops and text-token repetition per window; that
-dynamic control flow is the part that needs careful Swift translation + iterative parity
-debugging against `t_out`. Everything feeding it (above) is now done and verified.
+**CRUX VERIFIED (2026-06-05): block-0 attn + full block parity = `max_abs 0.0` (bit-exact) on CPU.**
+RoPE + Window(unshifted) + windowed MM-Attention + TransformerBlock reproduce mflux exactly.
+Remaining for the `t_out` gate (mechanical now the hard logic is proven):
+1. **`shift=true` windows** (odd blocks `i%2==1`) — half-window offset path in `makeWindows`.
+2. **`shared_weights`** (blocks `i ≥ mm_layers=10`) — attn `proj_qkv`/`proj_out` (no _vid/_txt), `mlp.all`, `ada.params_all`; vid+txt share one set. Different checkpoint keys.
+3. **`is_last_layer`** (block 31) — already handled in the Swift modules.
+4. **Transformer assembly** + output ada (`vid_out_norm`, `out_shift/out_scale`: `h*(scale_a+out_scale)+(shift_a+out_shift)` from `emb[:,:,0,0:2]`) → **`t_out` gate**.
 
 ### VAE (`seedvr2_vae/` → `Sources/SeedVR2MLX/Models/VAE/`)
 | mflux | Swift | notes | status |
