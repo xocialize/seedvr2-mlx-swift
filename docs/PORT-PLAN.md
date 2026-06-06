@@ -76,9 +76,16 @@ host concerns (PIL-bicubic + numpy-LAB + tiling don't belong in the model packag
 | Seeded-noise RNG / scheduler | max_abs **0.0 / 0.0** |
 | Decode wiring (non-tiled) | rel_err **6.8e-3** |
 
+**✅ int8 DONE & VERIFIED (2026-06-05):** `Quantization.swift` quantizes transformer Linears
+(groupSize 64, bits 8; skips in-dim % 64 ≠ 0 → `vid_in.proj` stays fp16; VAE fp16). Config-driven
+load path (WeightLoader reads `quantization`, Upscaler applies before update). GPU-verified
+(~3 s): int8 `t_out` cosine vs fp16 **0.9999749** (near-lossless), reload round-trip **1.0**.
+Transformer **7.9 GB → 3.9 GB**; self-contained `SeedVR2-3B-mlx-int8/` produced. *(Quant-quality
+tests run on GPU — int8-vs-fp16 cosine needs no CPU oracle stream.)*
+
 **Remaining = packaging/integration only:** preprocess + LAB color-correct (host utilities),
-VAE tiling (ForgeUpscaler `MLXTileProcessor`), ForgeUpscaler Export-tier conformer, int8
-(near-lossless 50 dB / ~4 GB on-device), publish `mlx-community/SeedVR2-3B-mlx`.
+VAE tiling (ForgeUpscaler `MLXTileProcessor`), ForgeUpscaler Export-tier conformer, publish
+`mlx-community/SeedVR2-3B-mlx{,-int8}`.
 
 ## Sequence
 1. Leaf parity: RMSNorm ✅ → RoPE → SwiGLU → AdaModulation → Attention (vs random + cross-check vs a small mflux dump).
