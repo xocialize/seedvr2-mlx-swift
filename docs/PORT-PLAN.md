@@ -55,12 +55,30 @@ every group-norm; replicated). Both major components (transformer + VAE) now don
 ### Pipeline (`variants/upscale/`, `latent_creator/`, scheduler → `Sources/SeedVR2MLX/Pipeline/`)
 | mflux | Swift | notes | status |
 |---|---|---|---|
-| seedvr2_util.py (preprocess) | Preprocess.swift | resolution/softness pre-downsample, pad to /16 | ⬜ |
-| seedvr2_latent_creator.py | LatentCreator.swift | condition (upsample enc to target latent), seeded noise | ⬜ |
-| schedulers/seedvr2_euler_scheduler.py | Scheduler.swift | 1-step euler | ⬜ |
-| text_embeddings.py | TextEmbeddings.swift | load pos_emb.safetensors | ⬜ |
-| seedvr2.py (generate_image) | Upscaler.swift | encode → 1-step transformer → step → decode → color-correct | ⬜ |
+| seedvr2_latent_creator.py | LatentCreator.swift | seeded noise + condition (concat mask) | ✅ |
+| schedulers/seedvr2_euler_scheduler.py | Scheduler.swift | 1-step euler | ✅ |
+| seedvr2.py (generate_image) | Upscaler.swift | encode → 1-step transformer → step → decode (core path) | ✅ |
 | WeightLoader | Utilities/WeightLoader.swift | load exported safetensors + config | ✅ |
+| seedvr2_util.py preprocess (bicubic resize/softness) | — | **host/Forge or utility** (PIL-exact bicubic) | ⬜ |
+| seedvr2_util.py LAB-wavelet color-correct | — | **host/Forge or utility** (numpy-heavy post-proc) | ⬜ |
+| VAE tiling (VAETiler) | — | **host (ForgeUpscaler.MLXTileProcessor)** | ⬜ |
+
+**✅ CORE PIPELINE DONE & VERIFIED (2026-06-05):** seeded-noise RNG match vs Python **max_abs 0.0**
+(MLX-Swift/Python share the RNG core — no noise injection needed), scheduler 1-step **max_abs 0.0**,
+full-res decode wiring vs non-tiled oracle **rel_err 6.8e-3**. Preprocess/color-correct/tiling are
+host concerns (PIL-bicubic + numpy-LAB + tiling don't belong in the model package; Forge supplies them).
+
+### 🎯 FULL INFERENCE PATH VERIFIED — every stage parity-locked vs mflux (CPU)
+| stage | metric |
+|---|---|
+| Transformer `t_out` (32 blocks) | max_abs **2.1e-4** |
+| VAE encode / decode | rel_err **3.5e-3 / 7.2e-3** |
+| Seeded-noise RNG / scheduler | max_abs **0.0 / 0.0** |
+| Decode wiring (non-tiled) | rel_err **6.8e-3** |
+
+**Remaining = packaging/integration only:** preprocess + LAB color-correct (host utilities),
+VAE tiling (ForgeUpscaler `MLXTileProcessor`), ForgeUpscaler Export-tier conformer, int8
+(near-lossless 50 dB / ~4 GB on-device), publish `mlx-community/SeedVR2-3B-mlx`.
 
 ## Sequence
 1. Leaf parity: RMSNorm ✅ → RoPE → SwiGLU → AdaModulation → Attention (vs random + cross-check vs a small mflux dump).
