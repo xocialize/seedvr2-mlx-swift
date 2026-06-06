@@ -12,8 +12,8 @@ ForgeUpscaler Export-tier wiring is **largely implemented** — see Progress bel
 | W3 tiling | ✅ reuses `MLXTileProcessor` at **scale=1** (SeedVR2 refines 1:1) |
 | W5 HF auto-download | ✅ `SeedVR2Weights.from(repoId:)` / `SeedVR2Upscaler(repoId:)` (`HFHub.swift`) |
 | W6 scale↔resolution | ✅ folded into W1 (scale → CoreImage factor; SeedVR2 is spatially identity) |
+| Runtime validation (GPU, int8, real frame) | ✅ `ForgeUpscalerTests/SeedVR2_MLXTests` — 128→256 2× in 2.72 s, full dynamic range, `/tmp/seedvr2_tier_out.png` (Forge PR #2) |
 | W4 LAB color-correct | ⬜ optional follow-up |
-| Runtime validation | ⬜ needs `xcodebuild` + downloaded weights + a real frame |
 | ADR-0007 update + `ExportUpscaler` preset wiring | ⬜ (opt-in `ExportUpscaler(tier:)` works today; default stays Real-ESRGAN) |
 
 **Key architecture finding:** SeedVR2 doesn't change spatial size (VAE encode 8× → DiT → decode 8×
