@@ -14,8 +14,16 @@ public final class SeedVR2Upscaler {
     let textEmb: MLXArray   // [1,58,5120] precomputed positive embedding
     let config: SeedVR2Config
 
-    public init(directory dir: URL) throws {
-        let w = try SeedVR2Weights(directory: dir)
+    /// Download + load from an HF repo id (e.g. `mlx-community/SeedVR2-3B-mlx-int8`).
+    public convenience init(repoId: String, revision: String = "main") throws {
+        try self.init(weights: SeedVR2Weights.from(repoId: repoId, revision: revision))
+    }
+
+    public convenience init(directory dir: URL) throws {
+        try self.init(weights: SeedVR2Weights(directory: dir))
+    }
+
+    public init(weights w: SeedVR2Weights) throws {
         self.config = w.config
         self.transformer = SeedVR2Transformer(w.config)
         if let q = w.quantization {

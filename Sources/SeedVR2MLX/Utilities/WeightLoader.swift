@@ -36,4 +36,11 @@ public struct SeedVR2Weights {
     }
 
     enum WeightError: Error { case missing(String) }
+
+    /// Download (if needed) and load weights from an HF repo, e.g.
+    /// `mlx-community/SeedVR2-3B-mlx-int8`. Cached under the system caches dir.
+    public static func from(repoId: String, revision: String = "main") throws -> SeedVR2Weights {
+        let dir = try HFHub.snapshot(repoId: repoId, revision: revision)
+        return try SeedVR2Weights(directory: dir)
+    }
 }
