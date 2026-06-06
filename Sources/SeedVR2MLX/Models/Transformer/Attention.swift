@@ -21,13 +21,13 @@ public final class MMAttention: Module {
     @ModuleInfo(key: "norm_k_txt") var normKTxt: SeedVR2RMSNorm
     @ModuleInfo(key: "rope") var rope: SeedVR2RoPE
 
-    let heads: Int, headDim: Int, scale: Float, window: [Int], ropeOnText: Bool
+    let heads: Int, headDim: Int, scale: Float, window: [Int], ropeOnText: Bool, shift: Bool
 
     public init(vidDim: Int, txtDim: Int, heads: Int = 20, headDim: Int = 128,
-                ropeDim: Int = 128, ropeOnText: Bool = true, window: [Int] = [4, 3, 3]) {
+                ropeDim: Int = 128, ropeOnText: Bool = true, window: [Int] = [4, 3, 3], shift: Bool = false) {
         self.heads = heads; self.headDim = headDim
         self.scale = powf(Float(headDim), -0.5)
-        self.window = window; self.ropeOnText = ropeOnText
+        self.window = window; self.ropeOnText = ropeOnText; self.shift = shift
         let inner = heads * headDim
         self._projQkvVid.wrappedValue = Linear(vidDim, 3 * inner, bias: false)
         self._projOutVid.wrappedValue = Linear(inner, vidDim, bias: true)
@@ -52,7 +52,7 @@ public final class MMAttention: Module {
         var qkvVid = projQkvVid(vid.reshaped([-1, vid.shape[2]])).reshaped([-1, 3, heads, headDim])
         let qkvTxt = projQkvTxt(txt.reshaped([-1, txt.shape[2]])).reshaped([-1, 3, heads, headDim])
 
-        let part = WindowPartitioner(vidShape: vidShape, window: window)
+        let part = WindowPartitioner(vidShape: vidShape, window: window, shift: shift)
         qkvVid = part.partition(qkvVid)
 
         // 2. normalize q,k; replicate text into every window

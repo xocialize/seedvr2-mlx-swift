@@ -18,14 +18,15 @@ public final class TransformerBlock: Module {
 
     public init(vidDim: Int = 2560, txtDim: Int = 2560, heads: Int = 20, headDim: Int = 128,
                 expandRatio: Int = 4, normEps: Float = 1e-5, ropeDim: Int = 128,
-                ropeOnText: Bool = true, isLastLayer: Bool = false, window: [Int] = [4, 3, 3]) {
+                ropeOnText: Bool = true, shared: Bool = false, isLastLayer: Bool = false,
+                window: [Int] = [4, 3, 3], shift: Bool = false) {
         self.isLastLayer = isLastLayer
         self.eps = normEps
         self._attn.wrappedValue = MMAttention(vidDim: vidDim, txtDim: txtDim, heads: heads,
-            headDim: headDim, ropeDim: ropeDim, ropeOnText: ropeOnText, window: window)
+            headDim: headDim, ropeDim: ropeDim, ropeOnText: ropeOnText, window: window, shift: shift)
         self._mlp.wrappedValue = MMSwiGLU(vidDim: vidDim, txtDim: txtDim, expandRatio: expandRatio,
-            isLastLayer: isLastLayer)
-        self._ada.wrappedValue = AdaModulation(dim: vidDim, isLastLayer: isLastLayer)
+            shared: shared, isLastLayer: isLastLayer)
+        self._ada.wrappedValue = AdaModulation(dim: vidDim, shared: shared, isLastLayer: isLastLayer)
         super.init()
     }
 

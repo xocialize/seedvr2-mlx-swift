@@ -24,21 +24,31 @@ public final class SwiGLUMLP: Module, UnaryLayer {
 }
 
 /// Dual-stream MLP wrapper (video + text branches), mflux MMSwiGLU.
+/// Shared blocks (i >= mm_layers) use a single `all` MLP for both streams.
 public final class MMSwiGLU: Module {
-    @ModuleInfo(key: "vid") var vid: SwiGLUMLP
+    @ModuleInfo(key: "all") var all: SwiGLUMLP?
+    @ModuleInfo(key: "vid") var vid: SwiGLUMLP?
     @ModuleInfo(key: "txt") var txt: SwiGLUMLP?
     let isLastLayer: Bool
+    let shared: Bool
 
-    public init(vidDim: Int, txtDim: Int, expandRatio: Int = 4, isLastLayer: Bool = false) {
+    public init(vidDim: Int, txtDim: Int, expandRatio: Int = 4, shared: Bool = false, isLastLayer: Bool = false) {
         self.isLastLayer = isLastLayer
-        self._vid.wrappedValue = SwiGLUMLP(dim: vidDim, expandRatio: expandRatio)
-        self._txt.wrappedValue = isLastLayer ? nil : SwiGLUMLP(dim: txtDim, expandRatio: expandRatio)
+        self.shared = shared
+        if shared {
+            self._all.wrappedValue = SwiGLUMLP(dim: vidDim, expandRatio: expandRatio)
+        } else {
+            self._vid.wrappedValue = SwiGLUMLP(dim: vidDim, expandRatio: expandRatio)
+            self._txt.wrappedValue = isLastLayer ? nil : SwiGLUMLP(dim: txtDim, expandRatio: expandRatio)
+        }
         super.init()
     }
 
     public func callAsFunction(_ vidIn: MLXArray, _ txtIn: MLXArray) -> (MLXArray, MLXArray) {
-        let v = vid(vidIn)
-        let t = isLastLayer ? txtIn : txt!(txtIn)
+        let mlpVid = shared ? all! : vid!
+        let v = mlpVid(vidIn)
+        if isLastLayer { return (v, txtIn) }
+        let t = (shared ? all! : txt!)(txtIn)
         return (v, t)
     }
 }

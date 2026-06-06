@@ -36,24 +36,31 @@ public enum AdaLayer { case attn, mlp }
 public enum AdaMode { case modIn, modOut }
 
 public final class AdaModulation: Module {
-    @ModuleInfo(key: "params_vid") var paramsVid: AdaParams
+    @ModuleInfo(key: "params_all") var paramsAll: AdaParams?
+    @ModuleInfo(key: "params_vid") var paramsVid: AdaParams?
     @ModuleInfo(key: "params_txt") var paramsTxt: AdaParams?
     let isLastLayer: Bool
+    let shared: Bool
 
-    public init(dim: Int, isLastLayer: Bool = false) {
+    public init(dim: Int, shared: Bool = false, isLastLayer: Bool = false) {
         self.isLastLayer = isLastLayer
-        self._paramsVid.wrappedValue = AdaParams(dim)
-        self._paramsTxt.wrappedValue = isLastLayer ? nil : AdaParams(dim)
+        self.shared = shared
+        if shared {
+            self._paramsAll.wrappedValue = AdaParams(dim)
+        } else {
+            self._paramsVid.wrappedValue = AdaParams(dim)
+            self._paramsTxt.wrappedValue = isLastLayer ? nil : AdaParams(dim)
+        }
         super.init()
     }
 
     public func modulateVid(_ hidden: MLXArray, _ emb: MLXArray, _ layer: AdaLayer, _ mode: AdaMode) -> MLXArray {
-        apply(hidden, emb, paramsVid, layer, mode)
+        apply(hidden, emb, shared ? paramsAll! : paramsVid!, layer, mode)
     }
 
     public func modulateTxt(_ hidden: MLXArray, _ emb: MLXArray, _ layer: AdaLayer, _ mode: AdaMode) -> MLXArray {
         if isLastLayer { return hidden }
-        return apply(hidden, emb, paramsTxt!, layer, mode)
+        return apply(hidden, emb, shared ? paramsAll! : paramsTxt!, layer, mode)
     }
 
     private func apply(_ hidden: MLXArray, _ emb: MLXArray, _ p: AdaParams, _ layer: AdaLayer, _ mode: AdaMode) -> MLXArray {
