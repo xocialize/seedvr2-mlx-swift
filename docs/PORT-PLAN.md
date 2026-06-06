@@ -39,14 +39,18 @@ shared-weight blocks 10–31 + output ada — fp16 accumulation, well within tol
 Shared blocks differ only in `mlp.all` / `ada.params_all` keys (attn always carries equal
 vid+txt keys). Full-transformer CPU run ≈ 3.6 min (window-attn python-style loops; GPU for prod).
 
-### VAE (`seedvr2_vae/` → `Sources/SeedVR2MLX/Models/VAE/`)
+### VAE (`seedvr2_vae/` → `Sources/SeedVR2MLX/Models/VAE/`) — ✅ DONE & VERIFIED
 | mflux | Swift | notes | status |
 |---|---|---|---|
-| common/conv3d.py | CausalConv3d.swift | `convGeneral` NDHWC; causal temporal pad (temporal=1 for images) | ⬜ |
-| common/attention_3d.py | Attention3D.swift | spatial self-attn in VAE mid | ⬜ |
-| encoder/{encoder_3d,down_block_3d,downsample_3d} | Encoder.swift | 8× spatial downsample → 16-ch latent | ⬜ |
-| decoder/{decoder_3d,decoder_mid_block_3d,decoder_resnet_block_3d,up_block_3d,upsample_3d} | Decoder.swift | latent → RGB | ⬜ |
-| vae.py | VAE.swift | encode/decode wrappers | ⬜ |
+| common/conv3d.py | CausalConv3d.swift | `convGeneral` NDHWC; causal temporal pad; cast input→weight dtype | ✅ |
+| common/attention_3d.py | VAEBlocks.swift `Attention3D` | spatial self-attn; groupnorm fp32→bf16 | ✅ |
+| encoder/* | VAE.swift `Encoder3D` + VAEBlocks (Resnet/Down/Mid) | 8× downsample → 32ch → mean(16) | ✅ |
+| decoder/* | VAE.swift `Decoder3D` + VAEBlocks (Resnet/Up/Mid) | pixelshuffle upsamplers; latent → RGB | ✅ |
+| vae.py | VAE.swift `SeedVR2VAE` | encode/decode (scaling_factor 0.9152) | ✅ |
+
+**✅ VAE VERIFIED (2026-06-05):** encode `rel_err 3.5e-3`, decode `7.2e-3` vs mflux goldens (CPU).
+Residual is bf16 activation-cast precision (mflux casts to `ModelConfig.precision=bfloat16` after
+every group-norm; replicated). Both major components (transformer + VAE) now done.
 
 ### Pipeline (`variants/upscale/`, `latent_creator/`, scheduler → `Sources/SeedVR2MLX/Pipeline/`)
 | mflux | Swift | notes | status |
