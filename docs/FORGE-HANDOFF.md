@@ -1,7 +1,33 @@
 # SeedVR2 → ForgeUpscaler — Integration Handoff
 
-**Status (2026-06-05):** the SeedVR2 *model* is **done, parity-verified, and published**. This
-doc is the remaining **Forge-side wiring** to surface it as the ForgeUpscaler **Export tier**.
+**Status (2026-06-05):** the SeedVR2 *model* is **done, parity-verified, and published**. The
+ForgeUpscaler Export-tier wiring is **largely implemented** — see Progress below.
+
+## Progress (2026-06-05)
+
+| Item | Status |
+|---|---|
+| W1 `SeedVR2_MLX: ExportTier` conformer | ✅ implemented (`ForgeUpscaler/Export/SeedVR2_MLX.swift`) |
+| W2 spatial upscale | ✅ via **CoreImage Lanczos pre-upscale** (see key finding below) |
+| W3 tiling | ✅ reuses `MLXTileProcessor` at **scale=1** (SeedVR2 refines 1:1) |
+| W5 HF auto-download | ✅ `SeedVR2Weights.from(repoId:)` / `SeedVR2Upscaler(repoId:)` (`HFHub.swift`) |
+| W6 scale↔resolution | ✅ folded into W1 (scale → CoreImage factor; SeedVR2 is spatially identity) |
+| W4 LAB color-correct | ⬜ optional follow-up |
+| Runtime validation | ⬜ needs `xcodebuild` + downloaded weights + a real frame |
+| ADR-0007 update + `ExportUpscaler` preset wiring | ⬜ (opt-in `ExportUpscaler(tier:)` works today; default stays Real-ESRGAN) |
+
+**Key architecture finding:** SeedVR2 doesn't change spatial size (VAE encode 8× → DiT → decode 8×
+= identity). So the spatial upscale is a **bicubic/Lanczos pre-upscale** and SeedVR2 *refines* the
+result via one diffusion step (matches mflux). The conformer therefore: (1) CoreImage Lanczos-upscale
+the buffer by `scaleFactor`, (2) refine at 1:1 via `MLXTileProcessor(scale: 1)`. This avoided
+hand-rolling bicubic in MLX and made per-tile refinement seam-safe (a 1-step refiner on an
+already-upscaled image, overlap-blended — not multi-step generation). Forge branch:
+`forge-studio-optimizer @ feature/seedvr2-export-tier` (committed, swift-build clean, not pushed).
+
+---
+
+_Original handoff (work-item detail) below._
+
 None of the items below are model work — the DiT + 3D-VAE + 1-step diffusion loop are complete.
 
 ## What already exists (don't redo)
